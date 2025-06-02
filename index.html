@@ -1,0 +1,377 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <title>ギルクラ2 設定推測チェッカー</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <style>
+    body {
+      font-family: 'Orbitron', sans-serif;
+      background: linear-gradient(#101c2c, #1a1a1a);
+      color: #e0f0ff;
+      padding: 2em;
+      max-width: 600px;
+      margin: auto;
+      text-align: center;
+    }
+    h1 {
+      font-size: 1.5em;
+      margin-bottom: 1em;
+      text-shadow: 0 0 3px #00ffff;
+    }
+    .input-block {
+      margin-bottom: 1em;
+      text-align: left;
+    }
+    .input-block label {
+      display: block;
+      font-weight: bold;
+      margin-bottom: 0.3em;
+    }
+    input,
+    select {
+      width: 100%;
+      padding: 0.5em;
+      font-size: 1em;
+    }
+    button {
+      padding: 0.7em 1.2em;
+      font-size: 1em;
+      background: linear-gradient(145deg, #00ffff, #6633ff);
+      color: white !important;
+      border: none;
+      border-radius: 8px;
+      box-shadow: 0 0 10px #00ffff;
+      cursor: pointer;
+      margin: 0.5em;
+    }
+    .result {
+      margin-top: 1.5em;
+      padding: 1em;
+      background: rgba(0, 0, 0, 0.7);
+      border: 1px solid #33f;
+      border-radius: 8px;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 1em;
+    }
+    th, td {
+      border: 1px solid #555;
+      padding: 0.5em;
+      text-align: center;
+    }
+    .highlight {
+      color: #00ffff;
+      font-weight: bold;
+      text-shadow: 0 0 6px #00ffff;
+    }
+    .disabled {
+      color: #888;
+    }
+    ul {
+      text-align: left;
+      display: inline-block;
+      margin-top: 1em;
+    }
+  </style>
+</head>
+<body>
+  <h1>ギルクラ2 設定推測チェッカー</h1>
+
+  <div class="input-block">
+    <label for="atInput">AT初当たり確率（例: 460）</label>
+    <input id="atInput" type="number" placeholder="AT確率を入力" />
+  </div>
+
+  <div class="input-block">
+    <label for="rbInput">ボーナス確率（例: 315）</label>
+    <input id="rbInput" type="number" placeholder="ボーナス確率を入力" />
+  </div>
+
+  <div class="input-block">
+    <label for="visualSelect">BIG終了画面・サブ液晶示唆</label>
+    <select id="visualSelect">
+      <option value="">--選択してください--</option>
+      <option value="gc_black">GC黒</option>
+      <option value="gc_white">GC白</option>
+      <option value="shu_gai">集＆涯</option>
+      <option value="inori_mana">いのり＆真名</option>
+    </select>
+  </div>
+
+  <div class="input-block">
+    <label for="endingSelect">AT終了画面の示唆</label>
+    <select id="endingSelect">
+      <option value="">--選択してください--</option>
+      <option value="tsugumi">綾瀬＆ツグミ</option>
+      <option value="hanetsuki">羽根つき</option>
+      <option value="live">ライブ</option>
+    </select>
+  </div>
+
+  <div class="input-block">
+    <label for="watermelonSelect">弱スイカ＋異色BIG</label>
+    <select id="watermelonSelect">
+      <option value="">--選択してください--</option>
+      <option value="hit">発生あり</option>
+    </select>
+  </div>
+
+  <div>
+    <button onclick="checkSettings()">設定推測</button>
+    <button onclick="resetHistory()">履歴リセット</button>
+  </div>
+
+  <div id="result" class="result"></div>
+
+  <script>
+    const settingData = [
+      { setting: 1, at: 596.4, rb: 315.1 },
+      { setting: 2, at: 571.6, rb: 312.6 },
+      { setting: 3, at: 528.6, rb: 309.1 },
+      { setting: 4, at: 447.0, rb: 297.6 },
+      { setting: 5, at: 410.5, rb: 284.4 },
+      { setting: 6, at: 375.5, rb: 273.5 }
+    ];
+
+    let history = [];
+
+    function checkSettings() {
+      const atInputEl = document.getElementById("atInput");
+      const rbInputEl = document.getElementById("rbInput");
+      const visualSelect = document.getElementById("visualSelect");
+      const endingSelect = document.getElementById("endingSelect");
+      const watermelonSelect = document.getElementById("watermelonSelect");
+      const atInput = parseFloat(atInputEl.value);
+      const rbInput = parseFloat(rbInputEl.value);
+      const visual = visualSelect.value;
+      const ending = endingSelect.value;
+      const watermelon = watermelonSelect.value;
+
+      if (isNaN(atInput) && isNaN(rbInput) && !visual && !ending && !watermelon) {
+        document.getElementById("result").innerText = "AT確率、ボーナス確率、示唆のいずれかを入力してください。";
+        return;
+      }
+
+      atInputEl.value = "";
+      rbInputEl.value = "";
+      visualSelect.value = "";
+      endingSelect.value = "";
+      watermelonSelect.value = "";
+
+      const current = {
+        at: isNaN(atInput) ? null : atInput,
+        rb: isNaN(rbInput) ? null : rbInput,
+        visual: visual || null,
+        ending: ending || null,
+        watermelon: watermelon || null
+      };
+      history.push(current);
+
+      let visualLockMinSetting = 1;
+      if (history.some(h => h.visual === "shu_gai")) visualLockMinSetting = Math.max(visualLockMinSetting, 3);
+      if (history.some(h => h.visual === "inori_mana")) visualLockMinSetting = Math.max(visualLockMinSetting, 5);
+      if (history.some(h => h.ending === "tsugumi")) visualLockMinSetting = Math.max(visualLockMinSetting, 2);
+      if (history.some(h => h.ending === "hanetsuki")) visualLockMinSetting = Math.max(visualLockMinSetting, 4);
+      if (history.some(h => h.ending === "live")) visualLockMinSetting = Math.max(visualLockMinSetting, 6);
+
+      const scoreSums = settingData.map(s => {
+        let totalScore = 0;
+        if (s.setting < visualLockMinSetting) return { setting: s.setting, score: 0 };
+
+        history.forEach(h => {
+          let score = 0;
+          if (h.at !== null) {
+            const atDiff = Math.abs(h.at - s.at);
+            score += Math.exp(-atDiff * 0.05);
+          }
+          if (h.rb !== null) {
+            const rbDiff = Math.abs(h.rb - s.rb);
+            score += Math.exp(-rbDiff * 0.05);
+          }
+          if (h.visual === "gc_black") {
+            if (s.setting === 2 || s.setting === 5) score += 1.0;
+            else if (s.setting === 1 || s.setting === 4) score += 0.5;
+          }
+          if (h.visual === "gc_white") {
+            if (s.setting === 3 || s.setting === 6) score += 1.0;
+            else if (s.setting === 1 || s.setting === 4) score += 0.5;
+          }
+          if (h.visual === "shu_gai" && s.setting >= 3) score += 1.5;
+          if (h.visual === "inori_mana" && s.setting >= 5) score += 2.0;
+
+          if (h.ending === "tsugumi" && s.setting >= 2) score += 1.0;
+          if (h.ending === "hanetsuki" && s.setting >= 4) score += 1.5;
+          if (h.ending === "live" && s.setting === 6) score += 2.5;
+
+if (h.watermelon === "hit") {
+  if (s.setting === 1) score += 0.2;
+  if (s.setting === 2) score += 0.6;
+  if (s.setting === 3) score += 1.0;
+  if (s.setting === 4) score += 1.4;
+  if (s.setting === 5) score += 1.9;
+  if (s.setting === 6) score += 2.4;
+}
+
+          totalScore += score;
+        });
+        return { setting: s.setting, score: totalScore };
+      });
+
+      let total = scoreSums.reduce((sum, s) => sum + s.score, 0);
+      let finalScores = scoreSums.map(s => {
+        return { setting: s.setting, score: total > 0 ? ((s.score / total) * 100).toFixed(1) : "0.0" };
+      });
+
+      const maxScore = Math.max(...finalScores.map(s => parseFloat(s.score)));
+
+      let html = `<table><tr><th>設定</th><th>可能性（％）</th></tr>`;
+      finalScores.forEach(s => {
+        const score = parseFloat(s.score);
+        const highlightClass = score === maxScore ? 'highlight' : score === 0 ? 'disabled' : '';
+        html += `<tr><td class="${highlightClass}">設定${s.setting}</td><td class="${highlightClass}">${s.score}%</td></tr>`;
+      });
+      html += `</table><h3>入力履歴</h3><ul>`;
+      history.slice().reverse().forEach(h => {
+        if (h.at !== null) html += `<li>AT: ${h.at}</li>`;
+        if (h.rb !== null) html += `<li>ボーナス: ${h.rb}</li>`;
+        if (h.visual) html += `<li>示唆: ${getVisualLabel(h.visual)}</li>`;
+        if (h.ending) html += `<li>AT終了画面: ${getEndingLabel(h.ending)}</li>`;
+        if (h.watermelon) html += `<li>異色スイカBIG: 発生</li>`;
+      });
+      html += `</ul>`;
+
+      document.getElementById("result").innerHTML = html;
+    }
+
+    function getVisualLabel(val) {
+      switch(val) {
+        case "gc_black": return "GC黒";
+        case "gc_white": return "GC白";
+        case "shu_gai": return "集＆涯(設定3以上濃厚)";
+        case "inori_mana": return "いのり＆真名(設定5以上濃厚)";
+        default: return "";
+      }
+    }
+
+    function getEndingLabel(val) {
+      switch(val) {
+        case "tsugumi": return "綾瀬＆ツグミ(設定2以上濃厚)";
+        case "hanetsuki": return "羽根つき(設定4以上濃厚)";
+        case "live": return "ライブ(設定6濃厚)";
+        default: return "";
+      }
+    }
+
+    function resetHistory() {
+      history = [];
+      document.getElementById("result").innerHTML = "<p>履歴をリセットしました。</p>";
+    }
+  </script>
+  <div id="resonance-checker" style="display: block; margin-top: 2em;">
+<h2 style="font-size: 1.5em; margin-bottom: 1em; text-shadow: 0 0 3px #00ffff;">
+  レゾナンスナビ セリフ＆ステージ 判定</h2>
+    <select id="resonance-phrase">
+      <option value="">--セリフを選択--</option>
+      <option value="そこにおわすは〜">そこにおわすは〜</option>
+      <option value="探し物は水族館にあり？">探し物は水族館にあり？</option>
+      <option value="ミッションだってのに〜">ミッションだってのに〜</option>
+      <option value="人の手は借りないって〜">人の手は借りないって〜</option>
+      <option value="ねえ、集、なんか変わった？">ねえ、集、なんか変わった？</option>
+      <option value="ウチの子たちよろしく">ウチの子たちよろしく</option>
+      <option value="こんな状態はもうすぐ〜">こんな状態はもうすぐ〜</option>
+      <option value="いいニュースだ">いいニュースだ</option>
+      <option value="シュウ…ずっと側に〜">シュウ…ずっと側に〜</option>
+      <option value="取りなさいシュウ〜">取りなさいシュウ〜</option>
+      <option value="痛いなぁ！怪我したら〜">痛いなぁ！怪我したら〜</option>
+      <option value="告白はきちんと〜">告白はきちんと〜</option>
+      <option value="もしジャマしたら〜">もしジャマしたら〜</option>
+      <option value="こらえ性のない男ね">こらえ性のない男ね</option>
+      <option value="これぞホントの癒し系〜">これぞホントの癒し系〜</option>
+      <option value="まいていきましょう">まいていきましょう</option>
+      <option value="協力、感謝する〜">協力、感謝する〜</option>
+      <option value="記憶の鎖が解け〜">記憶の鎖が解け〜</option>
+    </select>
+    <br>
+    <select id="resonance-stage">
+      <option value="">--ステージを選択--</option>
+      <option value="学校">学校</option>
+      <option value="葬儀社">葬儀社</option>
+      <option value="王国">王国</option>
+    </select>
+    <br>
+    <button onclick="checkResonance()">判定</button>
+    <div id="resonance-result" class="result"></div>
+  </div>
+<script>
+  function toggleResonanceChecker() {
+    const div = document.getElementById("resonance-checker");
+    div.style.display = div.style.display === "none" ? "block" : "none";
+  }
+
+  function checkResonance() {
+    const phrase = document.getElementById("resonance-phrase").value;
+    const stage = document.getElementById("resonance-stage").value;
+    const resultDiv = document.getElementById("resonance-result");
+
+    if (!phrase || !stage) {
+      resultDiv.innerText = "セリフとステージの両方を選択してください。";
+      return;
+    }
+
+    const stageMap = {
+      "そこにおわすは〜": ["学校", "王国"],
+      "探し物は水族館にあり？": ["学校", "王国"],
+      "ミッションだってのに〜": ["葬儀社", "王国"],
+      "人の手は借りないって〜": ["葬儀社", "王国"],
+      "ねえ、集、なんか変わった？": ["学校", "王国"],
+      "ウチの子たちよろしく": ["葬儀社", "王国"],
+      "こんな状態はもうすぐ〜": ["学校", "王国"],
+      "いいニュースだ": ["葬儀社", "王国"],
+      "シュウ…ずっと側に〜": ["学校", "葬儀社", "王国"],
+      "取りなさいシュウ〜": ["学校", "葬儀社", "王国"],
+      "痛いなぁ！怪我したら〜": ["学校", "王国"],
+      "告白はきちんと〜": ["葬儀社", "王国"],
+      "もしジャマしたら〜": ["学校"],
+      "こらえ性のない男ね": ["葬儀社"],
+      "これぞホントの癒し系〜": ["王国"],
+      "まいていきましょう": ["学校", "葬儀社", "王国"],
+      "協力、感謝する〜": ["学校", "葬儀社", "王国"],
+      "記憶の鎖が解け〜": ["学校", "葬儀社", "王国"]
+    };
+
+    const hintMap = {
+      "そこにおわすは〜": "示唆ナシ",
+      "探し物は水族館にあり？": "示唆ナシ",
+      "ミッションだってのに〜": "示唆ナシ",
+      "人の手は借りないって〜": "示唆ナシ",
+      "ねえ、集、なんか変わった？": "モードB以上 期待",
+      "ウチの子たちよろしく": "モードB以上 期待",
+      "こんな状態はもうすぐ〜": "モードB以上 濃厚",
+      "いいニュースだ": "モードB以上 濃厚",
+      "シュウ…ずっと側に〜": "モードC以上 濃厚",
+      "取りなさいシュウ〜": "モードD 濃厚",
+      "痛いなぁ！怪我したら〜": "モードB 否定",
+      "告白はきちんと〜": "モードB 否定",
+      "もしジャマしたら〜": "モードB or D 濃厚",
+      "こらえ性のない男ね": "モードB or D 濃厚",
+      "これぞホントの癒し系〜": "モードB or D 濃厚",
+      "まいていきましょう": "モードアップ期待度 約25%",
+      "協力、感謝する〜": "モードアップ期待度 約50%",
+      "記憶の鎖が解け〜": "モードアップ 濃厚"
+    };
+
+    const isValid = stageMap[phrase]?.includes(stage);
+    const hint = hintMap[phrase] || "不明";
+    const stageComment = isValid ? "ステージ矛盾なし" : "<span style='color:red;'>モードC以上濃厚（ステージ矛盾）</span>";
+
+    resultDiv.innerHTML = `
+      <strong>示唆内容:</strong> ${hint}<br>
+      <strong>ステージ判定:</strong> ${stageComment}
+    `;
+  }
+</script>
+</body>
+</html>
